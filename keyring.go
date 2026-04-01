@@ -89,6 +89,11 @@ type secret struct {
 	Value string `json:"value"`
 }
 
+// secretsResponse is the envelope the API wraps secrets in.
+type secretsResponse struct {
+	Data []secret `json:"data"`
+}
+
 // Load fetches all secrets granted to the token and returns them as a
 // map[string]string keyed by each secret's key field. The values are
 // decrypted by the API before transmission.
@@ -121,13 +126,13 @@ func (c *Client) Load(ctx context.Context) (map[string]string, error) {
 		return nil, fmt.Errorf("%w: unexpected status %d", ErrMalformedResponse, resp.StatusCode)
 	}
 
-	var secrets []secret
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseBytes)).Decode(&secrets); err != nil {
+	var payload secretsResponse
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseBytes)).Decode(&payload); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMalformedResponse, err)
 	}
 
-	result := make(map[string]string, len(secrets))
-	for _, s := range secrets {
+	result := make(map[string]string, len(payload.Data))
+	for _, s := range payload.Data {
 		result[s.Key] = s.Value
 	}
 	return result, nil
@@ -146,13 +151,19 @@ func (c *Client) MustLoad() map[string]string {
 // InjectEnv calls Load and sets each returned secret as an environment
 // variable via os.Setenv. Subsequent code can use os.Getenv or any
 // env-reading config library as if the variables had been set natively.
-// It prints a table of the injected keys to stdout on success.
+// It prints a sorted table of injected key names to stdout. Keys that
+// replace an existing local env var are marked (override).
 func (c *Client) InjectEnv(ctx context.Context) error {
 	secrets, err := c.Load(ctx)
 	if err != nil {
 		return err
 	}
+
+	overridden := make(map[string]bool, len(secrets))
 	for k, v := range secrets {
+		if existing := os.Getenv(k); existing != "" && existing != v {
+			overridden[k] = true
+		}
 		if err := os.Setenv(k, v); err != nil {
 			return fmt.Errorf("keyring: failed to set env var %q: %w", k, err)
 		}
@@ -165,17 +176,23 @@ func (c *Client) InjectEnv(ctx context.Context) error {
 	sort.Strings(keys)
 
 	fmt.Println("keyring: injected environment variables")
-	fmt.Println("┌─────────────────────────────────────┐")
+	fmt.Println("┌──────────────────────────────────────────────────┐")
 	for _, k := range keys {
-		fmt.Printf("│ %-35s │\n", k)
+		tag := "          "
+		if overridden[k] {
+			tag = "(override)"
+		}
+		fmt.Printf("│ %-35s %s │\n", k, tag)
 	}
-	fmt.Println("└─────────────────────────────────────┘")
+	fmt.Println("└──────────────────────────────────────────────────┘")
 
 	return nil
 }
 
 // Get fetches all secrets and returns the value for a single key. An error is
-// returned if the key is not present in the granted secrets.
+// returned if the key is not present in the granted secrets. If the key is
+// already set in the local environment with a different value, a message is
+// printed to stdout indicating the override.
 //
 // Prefer calling Load once at startup and caching the map when multiple keys
 // are needed.
@@ -188,5 +205,32 @@ func (c *Client) Get(ctx context.Context, key string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("keyring: secret %q not found", key)
 	}
+	if existing := os.Getenv(key); existing != "" && existing != value {
+		fmt.Printf("keyring: overriding local env var %q with keyring secret\n", key)
+	}
 	return value, nil
+}
+
+// Get is a package-level convenience that creates a Client from environment
+// variables and returns the keyring value for key. It is equivalent to:
+//
+//	client, err := keyring.New()
+//	value, err := client.Get(ctx, key)
+func Get(ctx context.Context, key string) (string, error) {
+	c, err := New()
+	if err != nil {
+		return "", err
+	}
+	return c.Get(ctx, key)
+}
+
+// MustGet is a package-level convenience that creates a Client from
+// environment variables and returns the keyring value for key. It panics on
+// any error. Intended for use in main() where a missing secret is fatal.
+func MustGet(key string) string {
+	value, err := Get(context.Background(), key)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
