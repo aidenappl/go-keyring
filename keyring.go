@@ -235,3 +235,24 @@ func MustGet(key string) string {
 	}
 	return value
 }
+
+// GetOr returns the keyring value for key, or fallback if the key is absent
+// or any error occurs.
+func (c *Client) GetOr(ctx context.Context, key, fallback string) string {
+	v, err := c.Get(ctx, key)
+	if err != nil {
+		return fallback
+	}
+	return v
+}
+
+// GetOr is a package-level convenience that creates a Client from environment
+// variables and returns the keyring value for key, or fallback if the key is
+// absent or any error occurs.
+func GetOr(ctx context.Context, key, fallback string) string {
+	v, err := Get(ctx, key)
+	if err != nil {
+		return fallback
+	}
+	return v
+}

@@ -140,6 +140,26 @@ apiKey := keyring.MustGet("STRIPE_API_KEY")
 
 ---
 
+### `client.GetOr(ctx context.Context, key, fallback string) string`
+
+Returns the keyring value for key, or `fallback` if the key is absent or any error occurs. Never returns an error.
+
+```go
+port := client.GetOr(ctx, "PORT", "8080")
+```
+
+---
+
+### `keyring.GetOr(ctx context.Context, key, fallback string) string`
+
+Package-level convenience version of `GetOr`. Creates a client from environment variables and returns the keyring value for key, or `fallback` on any error.
+
+```go
+port := keyring.GetOr(ctx, "PORT", "8080")
+```
+
+---
+
 ## Typical Usage
 
 ### Inject all secrets into the environment at startup
