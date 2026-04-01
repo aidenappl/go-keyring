@@ -189,14 +189,18 @@ func (c *Client) InjectEnv(ctx context.Context) error {
 	return nil
 }
 
-// Get fetches all secrets and returns the value for a single key. An error is
-// returned if the key is not present in the granted secrets. If the key is
-// already set in the local environment with a different value, a message is
-// printed to stdout indicating the override.
+// Get returns the value for key. If the key is already set in the local
+// environment, that value is returned immediately without contacting the
+// Keyring API and a notice is printed to stdout. Otherwise the secret is
+// fetched from the API.
 //
 // Prefer calling Load once at startup and caching the map when multiple keys
 // are needed.
 func (c *Client) Get(ctx context.Context, key string) (string, error) {
+	if local := os.Getenv(key); local != "" {
+		fmt.Printf("keyring: using local env var %q (keyring lookup skipped)\n", key)
+		return local, nil
+	}
 	secrets, err := c.Load(ctx)
 	if err != nil {
 		return "", err
@@ -204,9 +208,6 @@ func (c *Client) Get(ctx context.Context, key string) (string, error) {
 	value, ok := secrets[key]
 	if !ok {
 		return "", fmt.Errorf("keyring: secret %q not found", key)
-	}
-	if existing := os.Getenv(key); existing != "" && existing != value {
-		fmt.Printf("keyring: overriding local env var %q with keyring secret\n", key)
 	}
 	return value, nil
 }

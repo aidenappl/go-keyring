@@ -112,7 +112,7 @@ Keys that already existed in the local environment with a different value are ma
 
 ### `client.Get(ctx context.Context, key string) (string, error)`
 
-Fetches all secrets and returns the value for a single key. Returns an error if the key is not present. If the key is already set in the local environment with a different value, a message is printed to stdout noting the override. Prefer calling `Load` once at startup and caching the map when multiple keys are needed.
+Returns the value for a single key. If the key is already set in the local environment, that value is returned immediately and the Keyring API is not contacted. Otherwise the secret is fetched from the API. Returns an error if the key is not found in either place.
 
 ```go
 apiKey, err := client.Get(ctx, "STRIPE_API_KEY")
@@ -122,7 +122,7 @@ apiKey, err := client.Get(ctx, "STRIPE_API_KEY")
 
 ### `keyring.Get(ctx context.Context, key string) (string, error)`
 
-Package-level convenience — creates a client from environment variables and returns the value for a single key. Equivalent to `keyring.New()` followed by `client.Get()`.
+Package-level convenience — creates a client from environment variables and returns the value for a single key. If the key is already set as a local env var it is returned immediately without hitting the API.
 
 ```go
 apiKey, err := keyring.Get(ctx, "STRIPE_API_KEY")
@@ -175,7 +175,7 @@ func main() {
 
 ### Fetch a single secret inline
 
-Use the package-level helpers when you only need one secret and don't want to manage a client:
+Use the package-level helpers when you only need one secret and don't want to manage a client. If the key is already present as a local env var (e.g. set via `.env` or your shell), that value is used directly and the API is not called:
 
 ```go
 // Returns an error
@@ -185,10 +185,10 @@ apiKey, err := keyring.Get(ctx, "STRIPE_API_KEY")
 apiKey := keyring.MustGet("STRIPE_API_KEY")
 ```
 
-If a local environment variable with the same key already exists and has a different value, a notice is printed to stdout:
+When the local env var takes precedence, a notice is printed to stdout:
 
 ```
-keyring: overriding local env var "STRIPE_API_KEY" with keyring secret
+keyring: using local env var "STRIPE_API_KEY" (keyring lookup skipped)
 ```
 
 ### Load all secrets into a map
