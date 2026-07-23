@@ -160,6 +160,52 @@ port := keyring.GetOr(ctx, "PORT", "8080")
 
 ---
 
+## Resolution helpers (Keyring **or** environment)
+
+`Get`/`MustGet`/`GetOr` build a client first, so they fail when the Keyring API
+isn't configured — even if the value is sitting in the process environment. That
+makes them awkward in tests and CI, where services ended up hand-rolling their
+own "try Keyring, then fall back to env" wrappers.
+
+The `Resolve` family does that centrally. Order is **environment first, then
+Keyring**, and an unconfigured or unreachable Keyring is not an error.
+
+### `keyring.Lookup(ctx, key) (string, bool)`
+
+Resolve a value, reporting whether it was found. Never errors.
+
+```go
+if dsn, ok := keyring.Lookup(ctx, "TRAILBLAZE_CORE_DB_DSN"); ok { ... }
+```
+
+### `keyring.MustResolve(key) string`
+
+Like `MustGet`, but succeeds when the value is in the environment and Keyring is
+unavailable. **Prefer this over `MustGet` for service startup.**
+
+```go
+CoreDBDSN = keyring.MustResolve("TRAILBLAZE_CORE_DB_DSN")
+```
+
+### `keyring.ResolveOr(ctx, key, fallback) string`
+
+```go
+Port = keyring.ResolveOr(ctx, "PORT", "8000")
+```
+
+### `keyring.Resolve(ctx, key) (string, error)`
+
+Same resolution, but returns an error naming the key instead of panicking.
+
+### `KEYRING_SOURCE=env`
+
+Skips the Keyring API entirely and reads only the process environment.
+`keyring.EnvOnly()` reports whether it is set. Services set this in tests and CI
+so a test process can never pick up production secrets from a developer's
+configured Keyring.
+
+---
+
 ## Typical Usage
 
 ### Inject all secrets into the environment at startup
