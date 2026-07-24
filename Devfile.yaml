@@ -1,11 +1,11 @@
 commands:
     - name: build
-      description: Build the binary
-      run: go build -o bin/app .
+      description: Build the library
+      run: go build ./...
       syncAfter: false
     - name: run
-      description: Run the application
-      run: go run .
+      description: Run the tests (this is a library — there is no main package)
+      run: go test ./...
       syncAfter: false
     - name: test
       description: Run tests

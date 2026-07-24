@@ -132,7 +132,7 @@ jobs:
             ## Installation
 
             ```bash
-            go get github.com/aidenappl/go-keyring/v1@${{ env.TAG }}
+            go get github.com/aidenappl/go-keyring@${{ env.TAG }}
             ```
           generate_release_notes: true
           make_latest: true

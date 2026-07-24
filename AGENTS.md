@@ -38,8 +38,8 @@ Its single job: let a Go service resolve its configuration from Keyring instead 
    first**, then Keyring, and treat an unconfigured/unreachable Keyring as *not an error*. This is
    the family that works cleanly in tests and CI where Keyring is deliberately absent.
 
-The entire module is **one package, `keyring`**, at the repo root — four `.go` files plus one
-test file.
+The entire module is **one package, `keyring`**, at the repo root — three `.go` files plus two
+test files.
 
 ## Stack & dependencies
 
@@ -60,7 +60,8 @@ Flat, single-package, package-per-file-by-concern. No `cmd/`, `internal/`, or `p
 | `keyring.go` | The core client. `Client`, the `Option` functional options (`WithURL`, `WithCredentials`, `WithTimeout`), `New`, the wire types (`secret`, `secretsResponse`), `Load`/`MustLoad`, `InjectEnv`, `Get`/`MustGet`/`GetOr` (methods **and** package-level convenience functions). Also `maxResponseBytes`. |
 | `resolve.go` | The **Resolve family** (env-first, Keyring-second). `SourceEnvVar` (`KEYRING_SOURCE`), `EnvOnly`, `Lookup`, `Resolve`, `MustResolve`, `ResolveOr`. Added in commit `7e77249` "Add Resolve helpers: Keyring or environment". |
 | `errors.go` | The three sentinel errors: `ErrUnauthorized`, `ErrUnavailable`, `ErrMalformedResponse`. |
-| `resolve_test.go` | Table-ish unit tests for the Resolve family (standard `testing`, `t.Setenv`, no testify). The **only** test file. |
+| `resolve_test.go` | Unit tests for the Resolve family (standard `testing`, `t.Setenv`, no testify). |
+| `keyring_test.go` | Unit tests for the core client — `Load`/`New`/`InjectEnv` exercised against an `httptest.Server`: happy path, HTTP Basic header, 401/403 → `ErrUnauthorized`, network/timeout → `ErrUnavailable`, non-2xx / unparseable body → `ErrMalformedResponse`, and `New` field validation. Standard `testing`, no testify. |
 | `go.mod` / `go.sum` | Module definition (Go 1.24.10); `go.sum` is empty (no deps). |
 | `Devfile.yaml` | The `dev` CLI command map (see below). |
 | `.github/workflows/pr.yml` | PR gate: gofmt check, `go mod verify` + tidy diff, `go build`, `go test -race`. |
@@ -72,8 +73,8 @@ Flat, single-package, package-per-file-by-concern. No `cmd/`, `internal/`, or `p
 This repo uses the standard `dev` CLI via `Devfile.yaml`:
 
 ```bash
-dev build    # go build -o bin/app .   (builds nothing meaningful — no main; use `go build ./...`)
-dev run      # go run .                 (no main package; not useful here)
+dev build    # go build ./...          (compiles the library)
+dev run      # go test ./...            (library has no main; runs the tests instead)
 dev test     # go test ./...
 dev fmt      # gofmt -w -s .
 dev vet      # go vet ./...
@@ -81,9 +82,9 @@ dev check    # gofmt -w -s . && go vet ./... && go test ./...
 dev tidy     # go mod tidy
 ```
 
-> Note: `dev build`/`dev run` in `Devfile.yaml` assume a `main` package (`go build -o bin/app .`,
-> `go run .`). This is a **library** with no `main`, so those two commands are not meaningful — use
-> `go build ./...` for a real compile check. `dev check` / `dev test` are the ones that matter.
+> Note: this is a **library** with no `main` package. `dev build` compiles the whole module
+> (`go build ./...`) and `dev run` runs the tests (`go test ./...`) since there is nothing to
+> execute. `dev check` / `dev test` are the ones that matter.
 
 There is **no** Docker, no `docker-compose`, no `.env` required to build or test — the tests
 deliberately run with `KEYRING_URL` unset.
@@ -250,10 +251,10 @@ web host yields HTML and an `ErrMalformedResponse`. (The README's `keyring.examp
   The module proxy caches immutably and `sum.golang.org` can lag a fresh tag by seconds to
   minutes — a `go get` immediately after tagging may 500; retry rather than reaching for
   `GONOSUMDB`.
-- **Known doc drift:** the `ci.yml` release note's install snippet says
-  `go get github.com/aidenappl/go-keyring/v1@...`, but the actual module path is
-  `github.com/aidenappl/go-keyring` (no `/v1` — that suffix would only be correct at v2+). If you
-  touch the release workflow, fix that line to match `go.mod`.
+- **Install-path note:** the `ci.yml` release note's install snippet emits
+  `go get github.com/aidenappl/go-keyring@<tag>` — matching the module path in `go.mod`. It
+  previously carried a spurious `/v1` suffix (only correct at v2+); that has been fixed. Keep it
+  without a major-version suffix until the module actually goes to v2.
 
 ## Rules & guardrails
 
@@ -314,6 +315,6 @@ Update this AGENTS.md (and `README.md`) in the same change when you:
   `keyring-js`; note it here.
 - **Change the response cap, timeout default, or transport behaviour** → update *Stack &
   dependencies*.
-- **Cut a release** → record the version and what changed in *Operations*, and fix the `/v1`
-  install-path drift in `ci.yml` if it is still there.
+- **Cut a release** → record the version and what changed in *Operations*. (The `/v1`
+  install-path drift in `ci.yml` is already fixed; keep the snippet suffix-free until v2.)
 - **Add a dependency** → update *Stack & dependencies* and say why the zero-dep posture changed.
