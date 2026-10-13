@@ -230,6 +230,15 @@ web host yields HTML and an `ErrMalformedResponse`. (The README's `keyring.examp
 
 ## Operations
 
+- **CI runners:** every GitHub Actions job runs on `[self-hosted, lattice-worker]` — a
+  single-use runner started by `aidenappl/gh-runner-broker` on the CI host (`aplb-actions`,
+  10.15.10.78), with the toolchain and shared Go/npm caches provisioned by
+  `TeamTrailblaze/runner-setup`. Images build through the host's `lattice-builder` BuildKit
+  (`builder: lattice-builder`), never `docker/setup-buildx-action`, which races other runners
+  on the shared Docker daemon; its local layer cache replaces the gha cache. `setup-go` runs
+  with `cache: false`. Jobs stuck in "Queued" mean the broker or the host is down — check the
+  `gh-runner-broker` service in Monitor (zone `appleby`).
+
 - **Not deployed.** There is no running instance of *this* repo. It ships as a tagged Go module.
 - **Consumed by tag.** Existing tags: `v1.0.0`, `v1.0.1`, `v1.0.2`, `v1.1.0`. The Resolve family
   (`resolve.go`) landed for `v1.1.0`. A consumer upgrades with:
