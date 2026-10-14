@@ -114,7 +114,7 @@ func (c *Client) Load(ctx context.Context) (map[string]string, error) {
 	defer func() {
 		// Drain before close so the underlying TCP connection can be reused.
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxResponseBytes))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}()
 
 	switch resp.StatusCode {

@@ -37,7 +37,7 @@ func TestLoad_HappyPath(t *testing.T) {
 			t.Errorf("method = %q, want GET", r.Method)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":[{"key":"K1","value":"V1"},{"key":"K2","value":"V2"}]}`)
+		_, _ = fmt.Fprint(w, `{"data":[{"key":"K1","value":"V1"},{"key":"K2","value":"V2"}]}`)
 	}))
 	defer srv.Close()
 
@@ -63,7 +63,7 @@ func TestLoad_SetsBasicAuthHeader(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
-		fmt.Fprint(w, `{"data":[]}`)
+		_, _ = fmt.Fprint(w, `{"data":[]}`)
 	}))
 	defer srv.Close()
 
@@ -93,7 +93,7 @@ func TestLoad_ErrorMapping(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.status)
-				fmt.Fprint(w, tc.body)
+				_, _ = fmt.Fprint(w, tc.body)
 			}))
 			defer srv.Close()
 
@@ -197,14 +197,14 @@ func TestInjectEnv_SetsProcessEnv(t *testing.T) {
 	)
 	// InjectEnv calls os.Setenv directly (not t.Setenv), so clean up by hand.
 	t.Cleanup(func() {
-		os.Unsetenv(keyA)
-		os.Unsetenv(keyB)
+		_ = os.Unsetenv(keyA)
+		_ = os.Unsetenv(keyB)
 	})
-	os.Unsetenv(keyA)
+	_ = os.Unsetenv(keyA)
 	os.Unsetenv(keyB)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"data":[{"key":%q,"value":"aaa"},{"key":%q,"value":"bbb"}]}`, keyA, keyB)
+		_, _ = fmt.Fprintf(w, `{"data":[{"key":%q,"value":"aaa"},{"key":%q,"value":"bbb"}]}`, keyA, keyB)
 	}))
 	defer srv.Close()
 
