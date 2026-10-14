@@ -43,7 +43,7 @@ test files.
 
 ## Stack & dependencies
 
-- **Go 1.24.10**, **standard library only**. `go.sum` is empty; there are **zero external
+- **Go 1.26**, **standard library only**. `go.sum` is empty; there are **zero external
   dependencies**. Keep it that way unless there is a strong reason — a secrets SDK with no
   transitive deps is a security feature.
 - Transport is `net/http` with HTTP Basic Auth and a JSON body. No router, no SQL, no framework.
@@ -62,7 +62,7 @@ Flat, single-package, package-per-file-by-concern. No `cmd/`, `internal/`, or `p
 | `errors.go` | The three sentinel errors: `ErrUnauthorized`, `ErrUnavailable`, `ErrMalformedResponse`. |
 | `resolve_test.go` | Unit tests for the Resolve family (standard `testing`, `t.Setenv`, no testify). |
 | `keyring_test.go` | Unit tests for the core client — `Load`/`New`/`InjectEnv` exercised against an `httptest.Server`: happy path, HTTP Basic header, 401/403 → `ErrUnauthorized`, network/timeout → `ErrUnavailable`, non-2xx / unparseable body → `ErrMalformedResponse`, and `New` field validation. Standard `testing`, no testify. |
-| `go.mod` / `go.sum` | Module definition (Go 1.24.10); `go.sum` is empty (no deps). |
+| `go.mod` / `go.sum` | Module definition (Go 1.26); `go.sum` is empty (no deps). |
 | `Devfile.yaml` | The `dev` CLI command map (see below). |
 | `.github/workflows/pr.yml` | PR gate: gofmt check, `go mod verify` + tidy diff, `go build`, `go test -race`. |
 | `.github/workflows/ci.yml` | `Release` workflow on `main` / `v*` tags: gofmt, golangci-lint, `go test -race` + coverage → Codecov, `govulncheck`, and a tag-triggered GitHub Release with generated changelog. |
