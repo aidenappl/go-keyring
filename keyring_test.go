@@ -201,7 +201,7 @@ func TestInjectEnv_SetsProcessEnv(t *testing.T) {
 		_ = os.Unsetenv(keyB)
 	})
 	_ = os.Unsetenv(keyA)
-	os.Unsetenv(keyB)
+	_ = os.Unsetenv(keyB)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"data":[{"key":%q,"value":"aaa"},{"key":%q,"value":"bbb"}]}`, keyA, keyB)
