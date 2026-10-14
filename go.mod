@@ -1,3 +1,3 @@
 module github.com/aidenappl/go-keyring
 
-go 1.24.10
+go 1.26.9
